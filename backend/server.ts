@@ -2,6 +2,11 @@ import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";
 
+import "./models/Category";
+import "./models/OrderStatus";
+import "./models/Product";
+import "./models/Order";
+
 import productRoutes from "./routes/productRoutes";
 
 const app = express();
