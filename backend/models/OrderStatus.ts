@@ -5,7 +5,7 @@ export interface IOrderStatus extends Document {
 }
 
 const OrderStatusSchema = new Schema<IOrderStatus>({
-    name: { type: String, required: true, unique: true },
+    name: { type: String, required: true, unique: true }, 
 });
 
 export const OrderStatus = model<IOrderStatus>('OrderStatus', OrderStatusSchema);
