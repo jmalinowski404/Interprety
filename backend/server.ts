@@ -12,6 +12,8 @@ import productRoutes from "./routes/productRoutes";
 const app = express();
 const port = 4000;
 
+app.use(express.json());
+
 app.get("/api/health", (req, res) => {
     res.json({ status: 'ok'});
 })

@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { Product } from "../models/Product";
 import { ProductType } from "../types/Product";
 
+import { isValidObjectId } from "mongoose";
+
 export const GetProducts = async (req: Request, res: Response) => {
     try {
         const result = await Product.find();
@@ -62,6 +64,48 @@ export const CreateProduct = async (req: Request, res: Response) => {
             product
         })
     } catch (e) {
+        return res.status(500).json({
+            message: "Wystąpił błąd serwera.",
+            error: e
+        })
+    }
+}
+
+export const UpdateProduct = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        if (!isValidObjectId(id)) {
+            return res.status(404).json({
+                message: "Nie znaleziono produktu o podanym identyfikatorze."
+            })
+        }
+
+        const result = ProductType.partial().safeParse(req.body);
+
+        if (!result.success) {
+            return res.status(400).json({
+                message: "Błędne dane produktu podczas aktualizacji."
+            })
+        }
+
+        const product = await Product.findByIdAndUpdate(id, result.data, {
+            new: true,
+            runValidators: true
+        });
+
+        if (!product) {
+            return res.status(404).json({
+                message: "Nie znaleziono produktu o podanym identyfikatorze."
+            })
+        }
+
+        return res.status(200).json({
+            message: "Pomyślnie zaktualizowano produkt",
+            product
+        })
+    } catch (e) {
+        console.error(e);
         return res.status(500).json({
             message: "Wystąpił błąd serwera.",
             error: e
