@@ -48,7 +48,7 @@ export const CreateProduct = async (req: Request, res: Response) => {
             })
         }
 
-        const product = new Product(result);
+        const product = new Product(result.data);
 
         try {
             await product.save()

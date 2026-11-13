@@ -10,6 +10,7 @@ import "./models/Order";
 import productRoutes from "./routes/productRoutes";
 import categoryRoutes from "./routes/categoryRoutes";
 import orderRoutes from "./routes/orderRoutes";
+import orderStatusesRoutes from "./routes/orderStatusesRoutes";
 
 const app = express();
 const port = 4000;
@@ -23,6 +24,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/order-statuses", orderStatusesRoutes);
 
 mongoose
     .connect(process.env.MONGO_URI as string)
