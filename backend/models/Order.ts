@@ -21,16 +21,19 @@ const OrderItemSchema = new Schema<IOrderItem>({
         validator: (v: number) => Number.isInteger(v) && v > 0,
         message: 'Ilość musi być liczbą całkowitą dodatnią',
     }},
-    unitPrice: { type: Number, required: true, min: 0 },
+    unitPrice: { type: Number, required: true, validate:{  
+        validator: (v: number) => v > 0,
+        message: 'Cena musi być większa od zera',
+    }},
     },
     { _id: false }
 );
 
 const OrderSchema = new Schema<IOrder>({
-    createdAt: { type: Date, default: Date.now },
+    createdAt: { type: Date, default: Date.now, immutable: true },
     approvedAt: { type: Date, default: null },
     status: { type: Schema.Types.ObjectId, ref: 'OrderStatus', required: true },
-    username: { type: String, required: true },
+    username: { type: String, required: true, trim: true },
     email: {
             type: String,
             required: true,
