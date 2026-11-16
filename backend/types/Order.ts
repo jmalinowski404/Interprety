@@ -10,3 +10,7 @@ export const OrderType = z.object({
         quantity: z.int().positive()
     })).min(1)
 })
+
+export const OrderStatusChangeType = z.object({
+    status: z.string().trim().min(1)
+})

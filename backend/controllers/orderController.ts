@@ -3,7 +3,7 @@ import { isValidObjectId } from "mongoose";
 import { Order } from "../models/Order";
 import { OrderStatus } from "../models/OrderStatus";
 import { Product } from "../models/Product";
-import { OrderType } from "../types/Order";
+import { OrderType, OrderStatusChangeType } from "../types/Order";
 
 export const GetOrders = async (req: Request, res: Response) => {
     try {
@@ -11,12 +11,20 @@ export const GetOrders = async (req: Request, res: Response) => {
         const filter: Record<string, unknown> = {};
 
         if (status) {
-            if (!isValidObjectId(status)) {
+            if (typeof status !== "string") {
                 return res.status(400).json({
-                    message: "Nieprawidłowy format ID statusu."
-                });
+                    message: "Niepoprawny typ parametru status."
+                })
             }
-            filter.status = status;
+
+            const statusDoc = await OrderStatus.findOne({ name: status });
+            
+            if (!statusDoc) {
+                return res.status(404).json({
+                    message: "Nie znaleziono statusu o podanej nazwie."
+                })
+            }
+            filter.status = statusDoc._id; 
         }
 
         if (username) {
@@ -130,6 +138,83 @@ export const CreateOrder = async (req: Request, res: Response) => {
 
         return res.status(201).json({
             message: "Pomyślnie utworzono zamówienie",
+            order
+        })
+    } catch (e) {
+        return res.status(500).json({
+            message: "Wystąpił błąd serwera.",
+            error: e
+        })
+    }
+}
+
+const allowedTransitions: Record<string, string[]> = {
+    "NIEZATWIERDZONE": ["ZATWIERDZONE", "ANULOWANE"],
+    "ZATWIERDZONE": ["ZREALIZOWANE", "ANULOWANE"],
+    "ZREALIZOWANE": [],
+    "ANULOWANE": []
+};
+
+export const UpdateOrderStatus = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        if (!isValidObjectId(id)) {
+            return res.status(404).json({
+                message: "Nie znaleziono zamówienia o podanym identyfikatorze."
+            })
+        }
+
+        const result = OrderStatusChangeType.safeParse(req.body);
+
+        if (!result.success) {
+            return res.status(400).json({
+                message: "Błędne dane podczas zmiany statusu zamówienia."
+            })
+        }
+        
+        const order = await Order.findById(id);
+
+        if (!order) {
+            return res.status(404).json({
+                message: "Nie znaleziono zamówienia o podanym identyfikatorze."
+            })
+        }
+
+        const newStatus = await OrderStatus.findOne({ name: result.data.status });
+
+        if (!newStatus) {
+            return res.status(404).json({
+                message: "Nie znaleziono statusu o podanej nazwie."
+            })
+        }
+        
+        const currentStatus = await OrderStatus.findById(order.status);
+
+        if (!currentStatus) {
+            return res.status(500).json({
+                message: "Błąd wewnętrzny serwera. Nie znaleziono aktualnego statusu zamówienia."
+            })
+        }
+        
+        const allowed = allowedTransitions[currentStatus.name] ?? [];
+
+        if (!allowed.includes(newStatus.name)) {
+            return res.status(400).json({
+                message: `Nie można zmienić statusu z ${currentStatus.name} na ${newStatus.name}.`
+            })
+        }
+        
+        order.status = newStatus._id;
+
+        if (newStatus.name === "ZATWIERDZONE") {
+            order.approvedAt = new Date();
+        }
+
+        await order.save();
+        
+        return res.status(200).json({
+            message: "Pomyślnie zmieniono status zamówienia.",
             order
         })
     } catch (e) {
