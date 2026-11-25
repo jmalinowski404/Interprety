@@ -3,178 +3,132 @@ import { Product } from "../models/Product";
 import { ProductType } from "../types/Product";
 
 import { isValidObjectId } from "mongoose";
+import { Category } from "../models/Category";
+import { ApiError } from "../utils/ApiError";
 
 export const GetProducts = async (req: Request, res: Response) => {
-    try {
-        const result = await Product.find();
+  const result = await Product.find();
 
-        if (result.length < 1) {
-            return res.status(404).type('application/problem+json').json({
-                type: "about:blank",
-                title: "Brak produktów.",
-                status: 404,
-                detail: "Brak produktów w bazie danych.",
-                instance: req.originalUrl
-            })
-        }
+  if (result.length < 1) {
+    throw ApiError.notFound("Brak produktów w bazie danych.");
+  }
 
-        return res.status(200).json(result);
-    } catch (e) {
-        console.log(e);
-
-        return res.status(500).type('application/problem+json').json({
-            type: "about:blank",
-            title: "Internal Server Error",
-            status: 500,
-            detail: "Wystąpił nieoczekiwany błąd serwera podczas przetwarzania żądania.",
-            instance: req.originalUrl
-        })
-    }
-}
+  return res.status(200).json(result);
+};
 
 export const GetProductById = async (req: Request, res: Response) => {
-    try {
-        const { id } = req.params;
+  const { id } = req.params;
 
-        if (!isValidObjectId(id)) {
-            return res.status(400).type('application/problem+json').json({
-                type: "about:blank",
-                title: "Nieprawidłowy format ID.",
-                status: 400,
-                detail: `ID ${id}, nie jest właściwym formatem identyfikatora zasobu.`,
-                instance: req.originalUrl
-            })
-        }
+  if (!isValidObjectId(id)) {
+    throw ApiError.badRequest(
+      `ID ${id}, nie jest właściwym formatem identyfikatora zasobu.`
+    );
+  }
 
-        const result = await Product.findById(id).exec();
+  const result = await Product.findById(id).exec();
 
-        if (!result) {
-            return res.status(404).type('application/problem+json').json({
-                type: "about:blank",
-                title: "Brak takiego produktu.",
-                status: 404,
-                detail: `Produkt o ID ${id} nie istnieje w bazie danych.`,
-                instance: req.originalUrl
-            })
-        }
+  if (!result) {
+    throw ApiError.notFound(`Produkt o ID ${id} nie istnieje w bazie danych.`);
+  }
 
-        return res.status(200).json(result);
-    } catch (e) {
-        console.log(e);
-
-        return res.status(500).type('application/problem+json').json({
-            type: "about:blank",
-            title: "Internal Server Error",
-            status: 500,
-            detail: "Wystąpił nieoczekiwany błąd serwera podczas przetwarzania żądania.",
-            instance: req.originalUrl
-        })
-    }
-}
+  return res.status(200).json(result);
+};
 
 export const CreateProduct = async (req: Request, res: Response) => {
-    try {
-        const data = req.body;
+  const result = ProductType.safeParse(req.body);
 
-        const result = ProductType.safeParse(data);
+  if (!result.success) {
+    throw ApiError.fromZod(
+      result.error,
+      "Błędne dane produktu podczas tworzenia."
+    );
+  }
 
-        if (!result.success) {
-            return res.status(422).type('application/problem+json').json({
-                type: "about:blank",
-                title: "Błędne dane produktu.",
-                status: 422,
-                detail: "Błędne dane produktu podczas tworzenia.",
-                instance: req.originalUrl
-            })
-        }
+  if (result.data.price <= 0.0) {
+    throw ApiError.unprocessable(
+      "Cena produktu nie może być mniejsza lub równa 0"
+    );
+  }
 
-        const product = new Product(result.data);
+  if (result.data.weight <= 0.0) {
+    throw ApiError.unprocessable(
+      "Waga produktu nie może być mniejsza lub równa 0"
+    );
+  }
 
-        try {
-            await product.save()
-        } catch (e) {
-            console.log(e);
+  const categoryExists = await Category.exists({
+    _id: result.data.category,
+  });
 
-            return res.status(500).type('application/problem+json').json({
-                type: "about:blank",
-                title: "Internal Server Error",
-                status: 500,
-                detail: "Wystąpił błąd podczas zapisywania produktu.",
-                instance: req.originalUrl
-            })
-        }
+  if (categoryExists === null) {
+    throw ApiError.unprocessable(
+      `Kategoria o ID ${result.data.category} nie istnieje w bazie danych.`
+    );
+  }
 
-        return res.status(201).json({
-            message: "Pomyślnie utworzono produkt",
-            product
-        })
-    } catch (e) {
-        console.log(e);
+  const product = new Product(result.data);
 
-        return res.status(500).type('application/problem+json').json({
-            type: "about:blank",
-            title: "Internal Server Error",
-            status: 500,
-            detail: "Wystąpił nieoczekiwany błąd serwera podczas przetwarzania żądania.",
-            instance: req.originalUrl
-        })
-    }
-}
+  await product.save();
+
+  return res.status(201).json({
+    message: "Pomyślnie utworzono produkt",
+    product,
+  });
+};
 
 export const UpdateProduct = async (req: Request, res: Response) => {
-    try {
-        const { id } = req.params;
+  const { id } = req.params;
 
-        if (!isValidObjectId(id)) {
-            return res.status(400).type('application/problem+json').json({
-                type: "about:blank",
-                title: "Nieprawidłowy format ID.",
-                status: 400,
-                detail: `ID ${id}, nie jest właściwym formatem identyfikatora zasobu.`,
-                instance: req.originalUrl
-            })
-        }
+  if (!isValidObjectId(id)) {
+    throw ApiError.badRequest(
+      `ID ${id}, nie jest właściwym formatem identyfikatora zasobu.`
+    );
+  }
 
-        const result = ProductType.partial().safeParse(req.body);
+  const result = ProductType.partial().safeParse(req.body);
 
-        if (!result.success) {
-            return res.status(422).type('application/problem+json').json({
-                type: "about:blank",
-                title: "Błędne dane produktu.",
-                status: 422,
-                detail: "Błędne dane produktu podczas aktualizacji.",
-                instance: req.originalUrl
-            })
-        }
+  if (!result.success) {
+    throw ApiError.fromZod(
+      result.error,
+      "Błędne dane produktu podczas aktualizacji."
+    );
+  }
 
-        const product = await Product.findByIdAndUpdate(id, result.data, {
-            new: true,
-            runValidators: true
-        });
+  if (result.data.price !== undefined && result.data.price <= 0.0) {
+    throw ApiError.unprocessable(
+      "Cena produktu nie może być mniejsza lub równa 0"
+    );
+  }
 
-        if (!product) {
-            return res.status(404).type('application/problem+json').json({
-                type: "about:blank",
-                title: "Brak takiego produktu.",
-                status: 404,
-                detail: `Produkt o ID ${id} nie istnieje w bazie danych.`,
-                instance: req.originalUrl
-            })
-        }
+  if (result.data.weight !== undefined && result.data.weight <= 0.0) {
+    throw ApiError.unprocessable(
+      "Waga produktu nie może być mniejsza lub równa 0"
+    );
+  }
 
-        return res.status(200).json({
-            message: "Pomyślnie zaktualizowano produkt",
-            product
-        })
-    } catch (e) {
-        console.log(e);
+  if (result.data.category !== undefined) {
+    const categoryExists = await Category.exists({
+      _id: result.data.category,
+    });
 
-        return res.status(500).type('application/problem+json').json({
-            type: "about:blank",
-            title: "Internal Server Error",
-            status: 500,
-            detail: "Wystąpił nieoczekiwany błąd serwera podczas przetwarzania żądania.",
-            instance: req.originalUrl
-        })
+    if (categoryExists === null) {
+      throw ApiError.unprocessable(
+        `Kategoria o ID ${result.data.category} nie istnieje w bazie danych.`
+      );
     }
-}
+  }
+
+  const product = await Product.findByIdAndUpdate(id, result.data, {
+    new: true,
+    runValidators: true,
+  });
+
+  if (!product) {
+    throw ApiError.notFound(`Produkt o ID ${id} nie istnieje w bazie danych.`);
+  }
+
+  return res.status(200).json({
+    message: "Pomyślnie zaktualizowano produkt",
+    product,
+  });
+};

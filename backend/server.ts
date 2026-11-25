@@ -2,6 +2,8 @@ import "dotenv/config";
 import express, { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 
+import { ApiError } from "./utils/ApiError";
+
 import "./models/Category";
 import "./models/OrderStatus";
 import "./models/Product";
@@ -26,41 +28,38 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/order-statuses", orderStatusesRoutes);
 
-app.use((req: Request, res: Response) => {
-    return res.status(404).type('application/problem+json').json({
-        type: "about:blank",
-        title: "Brak takiego zasobu.",
-        status: 404,
-        detail: `Zasób ${req.originalUrl} nie istnieje.`,
-        instance: req.originalUrl
-    })
+const sendProblem = (req: Request, res: Response, err: ApiError) => {
+    return res.status(err.status).type('application/problem+json').json({
+        type: err.type,
+        title: err.title,
+        status: err.status,
+        detail: err.detail,
+        instance: req.originalUrl,
+        ...(err.errors?.length ? { errors: err.errors } : {})
+    });
+};
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+    next(ApiError.notFound(`Zasób ${req.originalUrl} nie istnieje.`));
 });
 
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
     if (res.headersSent) {
         return next(err);
     }
 
-    // Niepoprawna składnia ciała żądania (np. zepsuty JSON) -> 400
-    if (err?.type === "entity.parse.failed") {
-        return res.status(400).type('application/problem+json').json({
-            type: "about:blank",
-            title: "Niepoprawny JSON.",
-            status: 400,
-            detail: "Ciało żądania zawiera niepoprawny JSON.",
-            instance: req.originalUrl
-        })
+    if (err instanceof ApiError) {
+        return sendProblem(req, res, err);
     }
 
-    console.log(err);
+    // Niepoprawna składnia ciała żądania (np. zepsuty JSON) -> 400
+    if ((err as { type?: string })?.type === "entity.parse.failed") {
+        return sendProblem(req, res, ApiError.badRequest("Ciało żądania zawiera niepoprawny JSON."));
+    }
 
-    return res.status(500).type('application/problem+json').json({
-        type: "about:blank",
-        title: "Internal Server Error",
-        status: 500,
-        detail: "Wystąpił nieoczekiwany błąd serwera podczas przetwarzania żądania.",
-        instance: req.originalUrl
-    })
+    console.error(`${req.method} ${req.originalUrl}`, err);
+
+    return sendProblem(req, res, ApiError.internal());
 });
 
 mongoose

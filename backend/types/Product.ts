@@ -1,3 +1,4 @@
+import { isValidObjectId } from "mongoose";
 import z from "zod";
 
 export const ProductType = z.object({
@@ -5,5 +6,5 @@ export const ProductType = z.object({
     description: z.string().min(8),
     price: z.float64(),
     weight: z.float64(),
-    category: z.string()
+    category: z.string().refine((v) => isValidObjectId(v))
 })
