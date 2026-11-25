@@ -41,9 +41,14 @@ export const GetOrders = async (req: Request, res: Response) => {
 
         return res.status(200).json(result);
     } catch (e) {
-        return res.status(500).json({
-            message: "Wystąpił błąd serwera.",
-            error: e
+        console.log(e);
+
+        return res.status(500).type('application/problem+json').json({
+            type: "about:blank",
+            title: "Internal Server Error",
+            status: 500,
+            detail: "Wystąpił nieoczekiwany błąd serwera podczas przetwarzania żądania.",
+            instance: req.originalUrl
         })
     }
 }
@@ -68,9 +73,14 @@ export const GetOrderById = async (req: Request, res: Response) => {
 
         return res.status(200).json(order);
     } catch (e) {
-        return res.status(500).json({
-            message: "Wystąpił błąd serwera.",
-            error: e
+        console.log(e);
+
+        return res.status(500).type('application/problem+json').json({
+            type: "about:blank",
+            title: "Internal Server Error",
+            status: 500,
+            detail: "Wystąpił nieoczekiwany błąd serwera podczas przetwarzania żądania.",
+            instance: req.originalUrl
         })
     }
 }
@@ -106,8 +116,12 @@ export const CreateOrder = async (req: Request, res: Response) => {
         const status = await OrderStatus.findOne({ name: "NIEZATWIERDZONE" });
 
         if (!status) {
-            return res.status(500).json({
-                message: "Brak stanu NIEZATWIERDZONE w bazie danych."
+            return res.status(500).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Internal Server Error",
+                status: 500,
+                detail: "Brak stanu NIEZATWIERDZONE w bazie danych.",
+                instance: req.originalUrl
             })
         }
 
@@ -130,9 +144,14 @@ export const CreateOrder = async (req: Request, res: Response) => {
         try {
             await order.save()
         } catch (e) {
-            return res.status(500).json({
-                message: "Błąd podczas zapisywania zamówienia.",
-                error: e
+            console.log(e);
+
+            return res.status(500).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Internal Server Error",
+                status: 500,
+                detail: "Wystąpił błąd podczas zapisywania zamówienia.",
+                instance: req.originalUrl
             })
         }
 
@@ -141,9 +160,14 @@ export const CreateOrder = async (req: Request, res: Response) => {
             order
         })
     } catch (e) {
-        return res.status(500).json({
-            message: "Wystąpił błąd serwera.",
-            error: e
+        console.log(e);
+
+        return res.status(500).type('application/problem+json').json({
+            type: "about:blank",
+            title: "Internal Server Error",
+            status: 500,
+            detail: "Wystąpił nieoczekiwany błąd serwera podczas przetwarzania żądania.",
+            instance: req.originalUrl
         })
     }
 }
@@ -192,8 +216,12 @@ export const UpdateOrderStatus = async (req: Request, res: Response) => {
         const currentStatus = await OrderStatus.findById(order.status);
 
         if (!currentStatus) {
-            return res.status(500).json({
-                message: "Błąd wewnętrzny serwera. Nie znaleziono aktualnego statusu zamówienia."
+            return res.status(500).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Internal Server Error",
+                status: 500,
+                detail: "Błąd wewnętrzny serwera. Nie znaleziono aktualnego statusu zamówienia.",
+                instance: req.originalUrl
             })
         }
         
@@ -218,9 +246,14 @@ export const UpdateOrderStatus = async (req: Request, res: Response) => {
             order
         })
     } catch (e) {
-        return res.status(500).json({
-            message: "Wystąpił błąd serwera.",
-            error: e
+        console.log(e);
+
+        return res.status(500).type('application/problem+json').json({
+            type: "about:blank",
+            title: "Internal Server Error",
+            status: 500,
+            detail: "Wystąpił nieoczekiwany błąd serwera podczas przetwarzania żądania.",
+            instance: req.originalUrl
         })
     }
 }

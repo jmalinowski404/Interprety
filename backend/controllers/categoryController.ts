@@ -13,9 +13,14 @@ export const GetCategories = async (req: Request, res: Response) => {
 
         return res.status(200).json(result);
     } catch (e) {
-        return res.status(500).json({
-            message: "Wystąpił błąd serwera.",
-            error: e
+        console.log(e);
+
+        return res.status(500).type('application/problem+json').json({
+            type: "about:blank",
+            title: "Internal Server Error",
+            status: 500,
+            detail: "Wystąpił nieoczekiwany błąd serwera podczas przetwarzania żądania.",
+            instance: req.originalUrl
         })
     }
 }

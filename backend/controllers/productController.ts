@@ -16,22 +16,52 @@ export const GetProducts = async (req: Request, res: Response) => {
 
         return res.status(200).json(result);
     } catch (e) {
-        return res.status(500).json({
-            message: "Wystąpił błąd serwera.",
-            error: e
+        console.log(e);
+
+        return res.status(500).type('application/problem+json').json({
+            type: "about:blank",
+            title: "Internal Server Error",
+            status: 500,
+            detail: "Wystąpił nieoczekiwany błąd serwera podczas przetwarzania żądania.",
+            instance: req.originalUrl
         })
     }
 }
 
 export const GetProductById = async (req: Request, res: Response) => {
     try {
-        const { id } = await req.body();
+        const { id } = await req.params;
 
-        const result = await Product.findOne()
+        if (!isValidObjectId(id)) {
+            return res.status(400).type('application/problem+json').json({
+                title: "Nieprawidłowy format ID.",
+                detail: `ID ${id}, nie jest właściwym formatem identyfikatora zasobu.`,
+                status: 400,
+                instance: req.originalUrl
+            })
+        }
+
+        const result = await Product.findById(id).exec();
+
+        if (!result) {
+            return res.status(404).type('application/problem+json').json({
+                title: "Brak takiego produktu.",
+                detail: `Produkt o ID ${id} nie istnieje w bazie danych.`,
+                status: 404,
+                instance: req.originalUrl
+            })
+        }
+
+        return res.status(200).json(result);
     } catch (e) {
-        return res.status(500).json({
-            message: "Wystąpił błąd serwera.",
-            error: e
+        console.log(e);
+
+        return res.status(500).type('application/problem+json').json({
+            type: "about:blank",
+            title: "Internal Server Error",
+            status: 500,
+            detail: "Wystąpił nieoczekiwany błąd serwera podczas przetwarzania żądania.",
+            instance: req.originalUrl
         })
     }
 }
@@ -53,9 +83,14 @@ export const CreateProduct = async (req: Request, res: Response) => {
         try {
             await product.save()
         } catch (e) {
-            return res.status(500).json({
-                message: "Błąd podczas zapisywania produktu.",
-                error: e
+            console.log(e);
+
+            return res.status(500).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Internal Server Error",
+                status: 500,
+                detail: "Wystąpił błąd podczas zapisywania produktu.",
+                instance: req.originalUrl
             })
         }
 
@@ -64,9 +99,14 @@ export const CreateProduct = async (req: Request, res: Response) => {
             product
         })
     } catch (e) {
-        return res.status(500).json({
-            message: "Wystąpił błąd serwera.",
-            error: e
+        console.log(e);
+
+        return res.status(500).type('application/problem+json').json({
+            type: "about:blank",
+            title: "Internal Server Error",
+            status: 500,
+            detail: "Wystąpił nieoczekiwany błąd serwera podczas przetwarzania żądania.",
+            instance: req.originalUrl
         })
     }
 }
@@ -105,10 +145,14 @@ export const UpdateProduct = async (req: Request, res: Response) => {
             product
         })
     } catch (e) {
-        console.error(e);
-        return res.status(500).json({
-            message: "Wystąpił błąd serwera.",
-            error: e
+        console.log(e);
+
+        return res.status(500).type('application/problem+json').json({
+            type: "about:blank",
+            title: "Internal Server Error",
+            status: 500,
+            detail: "Wystąpił nieoczekiwany błąd serwera podczas przetwarzania żądania.",
+            instance: req.originalUrl
         })
     }
 }
