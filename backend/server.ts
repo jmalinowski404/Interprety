@@ -15,7 +15,7 @@ import orderRoutes from "./routes/orderRoutes";
 import orderStatusesRoutes from "./routes/orderStatusesRoutes";
 
 const app = express();
-const port = 4000;
+const port = process.env.PORT;
 
 app.use(express.json());
 
@@ -52,7 +52,6 @@ app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
         return sendProblem(req, res, err);
     }
 
-    // Niepoprawna składnia ciała żądania (np. zepsuty JSON) -> 400
     if ((err as { type?: string })?.type === "entity.parse.failed") {
         return sendProblem(req, res, ApiError.badRequest("Ciało żądania zawiera niepoprawny JSON."));
     }
