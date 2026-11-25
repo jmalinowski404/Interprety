@@ -5,6 +5,13 @@ import { OrderStatus } from "../models/OrderStatus";
 import { Product } from "../models/Product";
 import { OrderType, OrderStatusChangeType } from "../types/Order";
 
+const allowedTransitions: Record<string, string[]> = {
+    "NIEZATWIERDZONE": ["ZATWIERDZONE", "ANULOWANE"],
+    "ZATWIERDZONE": ["ZREALIZOWANE", "ANULOWANE"],
+    "ZREALIZOWANE": [],
+    "ANULOWANE": []
+};
+
 export const GetOrders = async (req: Request, res: Response) => {
     try {
         const { status, username } = req.query;
@@ -12,19 +19,27 @@ export const GetOrders = async (req: Request, res: Response) => {
 
         if (status) {
             if (typeof status !== "string") {
-                return res.status(400).json({
-                    message: "Niepoprawny typ parametru status."
+                return res.status(422).type('application/problem+json').json({
+                    type: "about:blank",
+                    title: "Niepoprawny parametr.",
+                    status: 422,
+                    detail: "Niepoprawny typ parametru status.",
+                    instance: req.originalUrl
                 })
             }
 
             const statusDoc = await OrderStatus.findOne({ name: status });
-            
+
             if (!statusDoc) {
-                return res.status(404).json({
-                    message: "Nie znaleziono statusu o podanej nazwie."
+                return res.status(404).type('application/problem+json').json({
+                    type: "about:blank",
+                    title: "Brak takiego statusu.",
+                    status: 404,
+                    detail: `Status o nazwie ${status} nie istnieje w bazie danych.`,
+                    instance: req.originalUrl
                 })
             }
-            filter.status = statusDoc._id; 
+            filter.status = statusDoc._id;
         }
 
         if (username) {
@@ -32,12 +47,6 @@ export const GetOrders = async (req: Request, res: Response) => {
         }
 
         const result = await Order.find(filter);
-
-        if(result.length < 1) {
-            return res.status(404).json({
-                message: "Nie znaleziono zamówień spełniających kryteria."
-            });
-        }
 
         return res.status(200).json(result);
     } catch (e) {
@@ -58,16 +67,24 @@ export const GetOrderById = async (req: Request, res: Response) => {
         const { id } = req.params;
 
         if (!isValidObjectId(id)) {
-            return res.status(404).json({
-                message: "Nie znaleziono zamówienia o podanym identyfikatorze."
+            return res.status(400).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Nieprawidłowy format ID.",
+                status: 400,
+                detail: `ID ${id}, nie jest właściwym formatem identyfikatora zasobu.`,
+                instance: req.originalUrl
             })
         }
 
         const order = await Order.findById(id);
 
         if (!order) {
-            return res.status(404).json({
-                message: "Nie znaleziono zamówienia o podanym identyfikatorze."
+            return res.status(404).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Brak takiego zamówienia.",
+                status: 404,
+                detail: `Zamówienie o ID ${id} nie istnieje w bazie danych.`,
+                instance: req.originalUrl
             })
         }
 
@@ -90,8 +107,12 @@ export const CreateOrder = async (req: Request, res: Response) => {
         const result = OrderType.safeParse(req.body);
 
         if (!result.success) {
-            return res.status(400).json({
-                message: "Błędne dane zamówienia podczas tworzenia."
+            return res.status(422).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Błędne dane zamówienia.",
+                status: 422,
+                detail: "Błędne dane zamówienia podczas tworzenia.",
+                instance: req.originalUrl
             })
         }
 
@@ -100,16 +121,24 @@ export const CreateOrder = async (req: Request, res: Response) => {
         const ids = items.map((item) => item.product);
 
         if (new Set(ids).size !== ids.length) {
-            return res.status(400).json({
-                message: "Ten sam produkt występuje w zamówieniu więcej niż raz."
+            return res.status(422).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Błędne dane zamówienia.",
+                status: 422,
+                detail: "Ten sam produkt występuje w zamówieniu więcej niż raz.",
+                instance: req.originalUrl
             })
         }
 
         const products = await Product.find({ _id: { $in: ids } });
 
         if (products.length !== ids.length) {
-            return res.status(404).json({
-                message: "Co najmniej jeden z produktów nie istnieje w bazie danych."
+            return res.status(404).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Brak takiego produktu.",
+                status: 404,
+                detail: "Co najmniej jeden z produktów nie istnieje w bazie danych.",
+                instance: req.originalUrl
             })
         }
 
@@ -172,47 +201,56 @@ export const CreateOrder = async (req: Request, res: Response) => {
     }
 }
 
-const allowedTransitions: Record<string, string[]> = {
-    "NIEZATWIERDZONE": ["ZATWIERDZONE", "ANULOWANE"],
-    "ZATWIERDZONE": ["ZREALIZOWANE", "ANULOWANE"],
-    "ZREALIZOWANE": [],
-    "ANULOWANE": []
-};
-
 export const UpdateOrderStatus = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
         if (!isValidObjectId(id)) {
-            return res.status(404).json({
-                message: "Nie znaleziono zamówienia o podanym identyfikatorze."
+            return res.status(400).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Nieprawidłowy format ID.",
+                status: 400,
+                detail: `ID ${id}, nie jest właściwym formatem identyfikatora zasobu.`,
+                instance: req.originalUrl
             })
         }
 
         const result = OrderStatusChangeType.safeParse(req.body);
 
         if (!result.success) {
-            return res.status(400).json({
-                message: "Błędne dane podczas zmiany statusu zamówienia."
+            return res.status(422).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Błędne dane statusu.",
+                status: 422,
+                detail: "Błędne dane podczas zmiany statusu zamówienia.",
+                instance: req.originalUrl
             })
         }
-        
+
         const order = await Order.findById(id);
 
         if (!order) {
-            return res.status(404).json({
-                message: "Nie znaleziono zamówienia o podanym identyfikatorze."
+            return res.status(404).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Brak takiego zamówienia.",
+                status: 404,
+                detail: `Zamówienie o ID ${id} nie istnieje w bazie danych.`,
+                instance: req.originalUrl
             })
         }
 
         const newStatus = await OrderStatus.findOne({ name: result.data.status });
 
         if (!newStatus) {
-            return res.status(404).json({
-                message: "Nie znaleziono statusu o podanej nazwie."
+            return res.status(404).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Brak takiego statusu.",
+                status: 404,
+                detail: `Status o nazwie ${result.data.status} nie istnieje w bazie danych.`,
+                instance: req.originalUrl
             })
         }
-        
+
         const currentStatus = await OrderStatus.findById(order.status);
 
         if (!currentStatus) {
@@ -224,15 +262,19 @@ export const UpdateOrderStatus = async (req: Request, res: Response) => {
                 instance: req.originalUrl
             })
         }
-        
+
         const allowed = allowedTransitions[currentStatus.name] ?? [];
 
         if (!allowed.includes(newStatus.name)) {
-            return res.status(400).json({
-                message: `Nie można zmienić statusu z ${currentStatus.name} na ${newStatus.name}.`
+            return res.status(409).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Brak możliwości zmiany statusu.",
+                status: 409,
+                detail: `Nie można zmienić statusu z ${currentStatus.name} na ${newStatus.name}.`,
+                instance: req.originalUrl
             })
         }
-        
+
         order.status = newStatus._id;
 
         if (newStatus.name === "ZATWIERDZONE") {
@@ -240,7 +282,7 @@ export const UpdateOrderStatus = async (req: Request, res: Response) => {
         }
 
         await order.save();
-        
+
         return res.status(200).json({
             message: "Pomyślnie zmieniono status zamówienia.",
             order

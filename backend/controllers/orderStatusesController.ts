@@ -7,8 +7,12 @@ export const GetOrderStatuses = async (req: Request, res: Response) => {
     const result = await OrderStatus.find();
 
     if (result.length < 1) {
-      return res.status(404).json({
-        message: "Brak statusów w bazie danych",
+      return res.status(404).type("application/problem+json").json({
+        type: "about:blank",
+        title: "Brak statusów.",
+        status: 404,
+        detail: "Brak statusów w bazie danych.",
+        instance: req.originalUrl,
       });
     }
 

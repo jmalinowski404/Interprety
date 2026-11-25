@@ -4,10 +4,14 @@ import { Category } from "../models/Category";
 export const GetCategories = async (req: Request, res: Response) => {
     try {
         const result = await Category.find();
-        
+
         if(result.length < 1) {
-            return res.status(404).json({
-                message: "Brak kategorii w bazie danych"
+            return res.status(404).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Brak kategorii.",
+                status: 404,
+                detail: "Brak kategorii w bazie danych.",
+                instance: req.originalUrl
             })
         }
 

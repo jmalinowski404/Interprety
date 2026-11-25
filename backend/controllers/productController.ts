@@ -9,8 +9,12 @@ export const GetProducts = async (req: Request, res: Response) => {
         const result = await Product.find();
 
         if (result.length < 1) {
-            return res.status(404).json({
-                message: "Brak produktów w bazie danych"
+            return res.status(404).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Brak produktów.",
+                status: 404,
+                detail: "Brak produktów w bazie danych.",
+                instance: req.originalUrl
             })
         }
 
@@ -30,13 +34,14 @@ export const GetProducts = async (req: Request, res: Response) => {
 
 export const GetProductById = async (req: Request, res: Response) => {
     try {
-        const { id } = await req.params;
+        const { id } = req.params;
 
         if (!isValidObjectId(id)) {
             return res.status(400).type('application/problem+json').json({
+                type: "about:blank",
                 title: "Nieprawidłowy format ID.",
-                detail: `ID ${id}, nie jest właściwym formatem identyfikatora zasobu.`,
                 status: 400,
+                detail: `ID ${id}, nie jest właściwym formatem identyfikatora zasobu.`,
                 instance: req.originalUrl
             })
         }
@@ -45,9 +50,10 @@ export const GetProductById = async (req: Request, res: Response) => {
 
         if (!result) {
             return res.status(404).type('application/problem+json').json({
+                type: "about:blank",
                 title: "Brak takiego produktu.",
-                detail: `Produkt o ID ${id} nie istnieje w bazie danych.`,
                 status: 404,
+                detail: `Produkt o ID ${id} nie istnieje w bazie danych.`,
                 instance: req.originalUrl
             })
         }
@@ -73,8 +79,12 @@ export const CreateProduct = async (req: Request, res: Response) => {
         const result = ProductType.safeParse(data);
 
         if (!result.success) {
-            return res.status(400).json({
-                message: "Błędne dane produktu podczas tworzenia."
+            return res.status(422).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Błędne dane produktu.",
+                status: 422,
+                detail: "Błędne dane produktu podczas tworzenia.",
+                instance: req.originalUrl
             })
         }
 
@@ -116,16 +126,24 @@ export const UpdateProduct = async (req: Request, res: Response) => {
         const { id } = req.params;
 
         if (!isValidObjectId(id)) {
-            return res.status(404).json({
-                message: "Nie znaleziono produktu o podanym identyfikatorze."
+            return res.status(400).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Nieprawidłowy format ID.",
+                status: 400,
+                detail: `ID ${id}, nie jest właściwym formatem identyfikatora zasobu.`,
+                instance: req.originalUrl
             })
         }
 
         const result = ProductType.partial().safeParse(req.body);
 
         if (!result.success) {
-            return res.status(400).json({
-                message: "Błędne dane produktu podczas aktualizacji."
+            return res.status(422).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Błędne dane produktu.",
+                status: 422,
+                detail: "Błędne dane produktu podczas aktualizacji.",
+                instance: req.originalUrl
             })
         }
 
@@ -135,8 +153,12 @@ export const UpdateProduct = async (req: Request, res: Response) => {
         });
 
         if (!product) {
-            return res.status(404).json({
-                message: "Nie znaleziono produktu o podanym identyfikatorze."
+            return res.status(404).type('application/problem+json').json({
+                type: "about:blank",
+                title: "Brak takiego produktu.",
+                status: 404,
+                detail: `Produkt o ID ${id} nie istnieje w bazie danych.`,
+                instance: req.originalUrl
             })
         }
 
