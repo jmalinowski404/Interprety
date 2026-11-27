@@ -6,6 +6,10 @@ import { isValidObjectId } from "mongoose";
 import { ensureCategoryExists } from "../services/categoryService";
 import { ApiError } from "../utils/ApiError";
 
+import OpenAI from "openai";
+import { SYSTEM_PROMPT } from "../utils/Prompt";
+import { Category } from "../models/Category";
+
 export const GetProducts = async (req: Request, res: Response) => {
   const result = await Product.find();
 
@@ -88,3 +92,51 @@ export const UpdateProduct = async (req: Request, res: Response) => {
     product,
   });
 };
+
+export const CreateSEODescription = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const client = new OpenAI({
+    apiKey: process.env.AI_API_KEY,
+    baseURL: "https://api.groq.com/openai/v1"
+  })
+  const product = await Product.findById(id);
+
+  if (!product) {
+    throw ApiError.notFound(`Produkt o ID ${id} nie istnieje w bazie danych.`);
+  }
+
+  const productData = {
+    name: product.name,
+    description: product.description,
+    price: product.price,
+    weight: product.weight,
+    category: Category.findById(product.category?._id),
+  };
+
+  let text: string;
+  try {
+    const message = await client.responses.create({
+      model: "openai/gpt-oss-20b",
+      instructions: SYSTEM_PROMPT,
+      input: `Dane produktu (JSON):\n${JSON.stringify(productData)}`,
+    });
+    text = message.output_text;
+  } catch (err) {
+    console.error("Błąd API modelu:", err);
+    throw new ApiError({ status: 502, title: "Błąd usługi zewnętrznej.", detail: "Nie udało się połączyć z modelem językowym.", type: "/problems/bad-gateway" });
+  }
+
+  let html: unknown;
+  try {
+    html = JSON.parse(text).html;
+  } catch {
+    html = undefined;
+  }
+
+  if (typeof html !== "string" || html.trim() === "") {
+    throw new ApiError({ status: 502, title: "Błąd usługi zewnętrznej.", detail: "Model zwrócił odpowiedź w niepoprawnym formacie.", type: "/problems/bad-gateway" });
+  }
+
+  return res.status(200).json({ id, text })
+}
