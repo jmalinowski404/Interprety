@@ -23,6 +23,7 @@
   },
   "scripts": {
     "test": "vitest run",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "start": "tsx server.ts"
   }
 }
