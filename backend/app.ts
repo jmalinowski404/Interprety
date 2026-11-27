@@ -7,20 +7,27 @@ import "./models/Category";
 import "./models/OrderStatus";
 import "./models/Product";
 import "./models/Order";
+import "./models/Role";
+import "./models/User";
+import "./models/Opinion";
 
 import productRoutes from "./routes/productRoutes";
 import categoryRoutes from "./routes/categoryRoutes";
 import orderRoutes from "./routes/orderRoutes";
 import orderStatusesRoutes from "./routes/orderStatusesRoutes";
+import authRoutes from "./routes/authRoutes";
+import initRoutes from "./routes/initRoutes";
 
 const app = express();
 
-app.use(express.json());
+app.use(express.json({ limit: "5mb" }));
 
 app.get("/api/health", (req, res) => {
     res.json({ status: 'ok'});
 })
 
+app.use("/api", authRoutes);
+app.use("/api/init", initRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/orders", orderRoutes);

@@ -1,18 +1,25 @@
 import "dotenv/config";
 import mongoose from "mongoose";
 import app from "./app";
+import { initDatabase } from "./services/dbInit";
 
 const port = process.env.PORT;
 
-mongoose
-    .connect(process.env.MONGO_URI as string)
-    .then(async () => {
+const start = async () => {
+    try {
+        await mongoose.connect(process.env.MONGO_URI as string);
         console.log('Połączono z bazą');
-    })
-    .catch((err) => {
-        console.error('Błąd połączenia z bazą:', err.message);
-    });
 
-app.listen(port, () => {
-    console.log(`Backend działa na porcie ${port}`);
-})
+        await initDatabase();
+        console.log('Struktura bazy i dane słownikowe gotowe');
+    } catch (err) {
+        console.error('Błąd inicjalizacji bazy:', (err as Error).message);
+        process.exit(1);
+    }
+
+    app.listen(port, () => {
+        console.log(`Backend działa na porcie ${port}`);
+    });
+};
+
+start();

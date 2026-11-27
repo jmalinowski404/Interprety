@@ -3,6 +3,12 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import { afterAll, afterEach, beforeAll, beforeEach } from "vitest";
 import { Category } from "../models/Category";
 import { OrderStatus } from "../models/OrderStatus";
+import bcrypt from "bcryptjs";
+import { Role, ROLES, RoleName } from "../models/Role";
+import { User } from "../models/User";
+import { signToken } from "../utils/jwt";
+
+process.env.JWT_SECRET ??= "test-secret";
 
 export const STATUSES = ["NIEZATWIERDZONE", "ZATWIERDZONE", "ZREALIZOWANE", "ANULOWANE"];
 
@@ -16,6 +22,7 @@ export const setupTestDb = () => {
 
     beforeEach(async () => {
         await OrderStatus.insertMany(STATUSES.map((name) => ({ name })));
+        await Role.insertMany(ROLES.map((name) => ({ name })));
     });
 
     afterEach(async () => {
@@ -44,3 +51,14 @@ export const productData = (
     category,
     ...overrides,
 });
+
+export const createUser = async (login: string, password: string, role: RoleName) => {
+    const roleDoc = await Role.findOne({ name: role });
+    const user = await User.create({ login, passwordHash: await bcrypt.hash(password, 4), role: roleDoc!._id });
+    return user.id as string;
+};
+
+export const authHeader = async (login: string, role: RoleName) => {
+    const id = await createUser(login, "haslo123", role);
+    return { Authorization: `Bearer ${signToken({ sub: id, login, role })}` };
+};

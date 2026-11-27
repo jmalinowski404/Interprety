@@ -34,6 +34,10 @@ export const GetOrders = async (req: Request, res: Response) => {
         filter.username = username;
     }
 
+    if (req.user!.role === "KLIENT") {
+        filter.user = req.user!.sub;
+    }
+
     const result = await Order.find(filter);
 
     return res.status(200).json(result);
@@ -50,6 +54,10 @@ export const GetOrderById = async (req: Request, res: Response) => {
 
     if (!order) {
         throw ApiError.notFound(`Zamówienie o ID ${id} nie istnieje w bazie danych.`);
+    }
+
+    if (req.user!.role === "KLIENT" && !order.user.equals(req.user!.sub)) {
+        throw ApiError.forbidden("Brak dostępu do zamówienia innego użytkownika.");
     }
 
     return res.status(200).json(order);
@@ -94,6 +102,7 @@ export const CreateOrder = async (req: Request, res: Response) => {
 
     const order = new Order({
         ...customer,
+        user: req.user!.sub,
         status: status._id,
         items: orderItems
     });

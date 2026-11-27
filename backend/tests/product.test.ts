@@ -1,15 +1,22 @@
 import request from "supertest";
 import { describe, expect, test } from "vitest";
 import app from "../app";
-import { createCategory, productData, setupTestDb } from "./helpers";
+import { beforeEach } from "vitest";
+import { authHeader, createCategory, productData, setupTestDb } from "./helpers";
 
 setupTestDb();
+
+let employee: Record<string, string>;
+
+beforeEach(async () => {
+    employee = await authHeader("pracownik", "PRACOWNIK");
+});
 
 describe("POST /api/products", () => {
     test("Poprawnie dodaje produkt.", async () => {
         const category = await createCategory();
 
-        const res = await request(app).post("/api/products").send(productData(category));
+        const res = await request(app).post("/api/products").set(employee).send(productData(category));
 
         expect(res.status).toBe(201);
         expect(res.body.message).toBe("Pomyślnie utworzono produkt");
@@ -30,7 +37,7 @@ describe("POST /api/products", () => {
     test("422 podczas ujemnej ceny.", async () => {
         const category = await createCategory();
 
-        const res = await request(app).post("/api/products").send(productData(category, { price: -2 }));
+        const res = await request(app).post("/api/products").set(employee).send(productData(category, { price: -2 }));
 
         expect(res.status).toBe(422);
         expect(res.headers["content-type"]).toContain("application/problem+json");
@@ -43,7 +50,7 @@ describe("POST /api/products", () => {
     test("422 podczas ujemnej wagi.", async () => {
         const category = await createCategory();
 
-        const res = await request(app).post("/api/products").send(productData(category, { weight: -2.3 }));
+        const res = await request(app).post("/api/products").set(employee).send(productData(category, { weight: -2.3 }));
 
         expect(res.status).toBe(422);
         expect(res.body.errors).toEqual([
@@ -55,7 +62,7 @@ describe("POST /api/products", () => {
         const category = await createCategory();
 
         const res = await request(app)
-            .post("/api/products")
+            .post("/api/products").set(employee)
             .send(productData(category, { price: "3499.99", weight: "1.03" }));
 
         expect(res.status).toBe(422);
@@ -65,7 +72,7 @@ describe("POST /api/products", () => {
 
     test("422 gdy kategoria nie istnieje.", async () => {
         const res = await request(app)
-            .post("/api/products")
+            .post("/api/products").set(employee)
             .send(productData("507f1f77bcf86cd799439011"));
 
         expect(res.status).toBe(422);

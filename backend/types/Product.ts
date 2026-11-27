@@ -13,3 +13,10 @@ export const ProductUpdateType = ProductType.partial().refine(
     (data) => Object.keys(data).length > 0,
     "Brak pól do aktualizacji."
 )
+
+
+export const ImportProductType = ProductType.extend({
+    category: z.string({ error: "Kategoria jest wymagana." }).trim().min(1, "Kategoria jest wymagana.")
+})
+
+export const ImportPayloadType = z.array(z.unknown()).min(1, "Plik nie zawiera żadnych produktów.")

@@ -39,6 +39,24 @@ export class ApiError extends Error {
         });
     }
 
+    static unauthorized(detail = "Brak poprawnego uwierzytelnienia.") {
+        return new ApiError({
+            status: 401,
+            title: "Brak uwierzytelnienia.",
+            detail,
+            type: "/problems/unauthorized"
+        });
+    }
+
+    static forbidden(detail = "Brak uprawnień do wykonania tej operacji.") {
+        return new ApiError({
+            status: 403,
+            title: "Brak uprawnień.",
+            detail,
+            type: "/problems/forbidden"
+        });
+    }
+
     static notFound(detail: string) {
         return new ApiError({
             status: 404,

@@ -9,6 +9,7 @@ export interface IOrder extends Document {
     createdAt: Date;
     approvedAt: Date | null;
     status: Types.ObjectId;
+    user: Types.ObjectId;
     username: string;
     email: string;
     phoneNumber: string;
@@ -33,6 +34,7 @@ const OrderSchema = new Schema<IOrder>({
     createdAt: { type: Date, default: Date.now, immutable: true },
     approvedAt: { type: Date, default: null },
     status: { type: Schema.Types.ObjectId, ref: 'OrderStatus', required: true },
+    user: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     username: { type: String, required: true, trim: true },
     email: {
             type: String,

@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import { beforeEach, describe, expect, test } from "vitest";
 import app from "../app";
 import { OrderStatus } from "../models/OrderStatus";
-import { createCategory, productData, setupTestDb } from "./helpers";
+import { authHeader, createCategory, productData, setupTestDb } from "./helpers";
 
 setupTestDb();
 
@@ -13,8 +13,11 @@ const customer = {
     phoneNumber: "+48 123 456 789",
 };
 
+let employee: Record<string, string>;
+let client: Record<string, string>;
+
 const createProduct = async (category: string, name: string, price: number) => {
-    const res = await request(app).post("/api/products").send(productData(category, { name, price }));
+    const res = await request(app).post("/api/products").set(employee).send(productData(category, { name, price }));
     expect(res.status).toBe(201);
     return res.body.product._id as string;
 };
@@ -25,6 +28,8 @@ let phone: string;
 let laptop: string;
 
 beforeEach(async () => {
+    employee = await authHeader("pracownik", "PRACOWNIK");
+    client = await authHeader("jan.kowalski", "KLIENT");
     const category = await createCategory("Elektronika");
     phone = await createProduct(category, "iPhone 18", 3499.99);
     laptop = await createProduct(category, "MacBook Pro", 8999);
@@ -32,7 +37,7 @@ beforeEach(async () => {
 
 const createOrder = async () => {
     const res = await request(app)
-        .post("/api/orders")
+        .post("/api/orders").set(client)
         .send({
             ...customer,
             items: [
@@ -47,7 +52,7 @@ const createOrder = async () => {
 describe("POST /api/orders", () => {
     test("Poprawnie tworzy zamówienie z dwoma różnymi produktami.", async () => {
         const res = await request(app)
-            .post("/api/orders")
+            .post("/api/orders").set(client)
             .send({
                 ...customer,
                 items: [
@@ -68,7 +73,7 @@ describe("POST /api/orders", () => {
             ],
         });
 
-        const get = await request(app).get(`/api/orders/${res.body.order._id}`);
+        const get = await request(app).get(`/api/orders/${res.body.order._id}`).set(client);
         expect(get.status).toBe(200);
         expect(get.body.items).toHaveLength(2);
     });
@@ -77,7 +82,7 @@ describe("POST /api/orders", () => {
         const missing = new mongoose.Types.ObjectId().toString();
 
         const res = await request(app)
-            .post("/api/orders")
+            .post("/api/orders").set(client)
             .send({
                 ...customer,
                 items: [
@@ -94,7 +99,7 @@ describe("POST /api/orders", () => {
             detail: "Co najmniej jeden z produktów nie istnieje w bazie danych.",
         });
 
-        const list = await request(app).get("/api/orders");
+        const list = await request(app).get("/api/orders").set(employee);
         expect(list.body).toEqual([]);
     });
 });
@@ -104,7 +109,7 @@ describe("PATCH /api/orders/:id/status", () => {
         const order = await createOrder();
 
         const res = await request(app)
-            .patch(`/api/orders/${order._id}/status`)
+            .patch(`/api/orders/${order._id}/status`).set(employee)
             .send({ status: "ZREALIZOWANE" });
 
         expect(res.status).toBe(409);
@@ -114,7 +119,7 @@ describe("PATCH /api/orders/:id/status", () => {
             detail: "Nie można zmienić statusu z NIEZATWIERDZONE na ZREALIZOWANE.",
         });
 
-        const get = await request(app).get(`/api/orders/${order._id}`);
+        const get = await request(app).get(`/api/orders/${order._id}`).set(employee);
         expect(get.body.status).toBe(await statusId("NIEZATWIERDZONE"));
     });
 
@@ -122,13 +127,13 @@ describe("PATCH /api/orders/:id/status", () => {
         const order = await createOrder();
 
         const cancel = await request(app)
-            .patch(`/api/orders/${order._id}/status`)
+            .patch(`/api/orders/${order._id}/status`).set(employee)
             .send({ status: "ANULOWANE" });
         expect(cancel.status).toBe(200);
         expect(cancel.body.order.status).toBe(await statusId("ANULOWANE"));
 
         const res = await request(app)
-            .patch(`/api/orders/${order._id}/status`)
+            .patch(`/api/orders/${order._id}/status`).set(employee)
             .send({ status: "ZATWIERDZONE" });
 
         expect(res.status).toBe(409);
@@ -140,11 +145,11 @@ describe("Zmiana ceny produktu", () => {
     test("nie wpływa na wartość istniejącego zamówienia.", async () => {
         const order = await createOrder();
 
-        const update = await request(app).patch(`/api/products/${phone}`).send({ price: 1999.99 });
+        const update = await request(app).patch(`/api/products/${phone}`).set(employee).send({ price: 1999.99 });
         expect(update.status).toBe(200);
         expect(update.body.product.price).toBe(1999.99);
 
-        const get = await request(app).get(`/api/orders/${order._id}`);
+        const get = await request(app).get(`/api/orders/${order._id}`).set(employee);
 
         expect(get.status).toBe(200);
         expect(get.body.items).toEqual([
